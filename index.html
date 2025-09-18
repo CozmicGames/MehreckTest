@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mehreck</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    canvas { border: 1px solid #333; display: block; margin-bottom: 10px; }
+    button { margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Mehreck</h1>
+
+  <canvas id="myCanvas" width="500" height="400"></canvas>
+  <script src="util.js"></script>
+  <script src="draw.js"></script>
+  <script src="script.js"></script>
+
+  <button onclick="saveProject()">Save Project</button>
+  <input type="file" id="fileInput" />
+  
+  <script>
+    setup(12);
+  </script>
+
+</body>
+</html>

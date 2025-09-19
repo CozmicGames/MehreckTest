@@ -1,10 +1,6 @@
 
 const canvas = document.getElementById("myCanvas");
-const ctx = canvas.getContext("2d");
-let shapes = []; // store all drawn shapes
-let draggingShape = null;
 let offsetX, offsetY;
-
 const dataPoints = [];
 const dataHandles = [];
 let draggedHandle = null;
@@ -17,9 +13,16 @@ function setup(categoryCount) {
     for(let i = 0; i < categoryCount; i++) {
         dataPoints.push(0.5);
         dataHandles.push({
-            index: i
+            index: i,
+            isValid: false
         })
     }
+
+    window.addEventListener("resize", e => {
+        canvas.width = window.innerWidth * 0.8;
+        canvas.height = window.innerHeight * 0.8;
+        draw();
+    });
 
     canvas.addEventListener("mousedown", e => {
         const rect = canvas.getBoundingClientRect();
@@ -77,6 +80,8 @@ function setup(categoryCount) {
 
         dataPoints[draggedHandle.index] = t;
 
+        draggedHandle.isValid = true;
+
         draw();
     });
 
@@ -84,6 +89,8 @@ function setup(categoryCount) {
         draggedHandle = null;
     });
 
+    canvas.width = window.innerWidth * 0.8;
+    canvas.height = window.innerHeight * 0.8;
     draw();
 }
 
@@ -91,8 +98,13 @@ function setup(categoryCount) {
 *   Redraw everything
 */
 function draw() {
+    const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGraph(canvas, dataPoints, "red", getGraphRadius(canvas), false, 9, 4);
+
+    drawGraph(canvas, dataHandles.map(handle => ({
+        dataValue: dataPoints[handle.index],
+        isValid: handle.isValid
+    })), "red", getGraphRadius(canvas), false, 9, 4);
 }
 
 
@@ -103,12 +115,12 @@ function draw() {
 
 // Save project (JSON)
 function saveProject() {
-  const json = JSON.stringify(shapes);
-  const blob = new Blob([json], { type: "application/json" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "project.json";
-  link.click();
+  //const json = JSON.stringify(shapes);
+  //const blob = new Blob([json], { type: "application/json" });
+  //const link = document.createElement("a");
+  //link.href = URL.createObjectURL(blob);
+  //link.download = "project.json";
+  //link.click();
 }
 // Load project (JSON)
 document.getElementById("fileInput").addEventListener("change", e => {
@@ -116,7 +128,7 @@ document.getElementById("fileInput").addEventListener("change", e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(evt) {
-    shapes = JSON.parse(evt.target.result);
+    //shapes = JSON.parse(evt.target.result);
     draw();
   };
   reader.readAsText(file);

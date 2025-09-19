@@ -116,6 +116,9 @@ function drawData(ctx, centerX, centerY, anglesAndRadii, color) {
 
     ctx.beginPath();
     for (let i = 0; i < points.length; i++) {
+        //if (!anglesAndRadii[i].isValid)
+        //    continue; TODO: Check is needed
+
         const p1 = points[i];
         const p2 = points[(i + 1) % points.length];
         ctx.moveTo(p1.x, p1.y);
@@ -150,11 +153,12 @@ function drawGraph(canvas, dataPoints, dataColor, radius, useCircle, scaleCount,
     for (let i = 0; i < categoryCount; i++) {
         const dataPoint = dataPoints[i];
         const dataPointAngle = angles[i];
-        const dataPointRadius = radius * dataPoint;
+        const dataPointRadius = radius * dataPoint.dataValue;
 
         dataAnglesAndRadii.push({
             angle: dataPointAngle,
-            radius: dataPointRadius
+            radius: dataPointRadius,
+            isValid: dataPoint.isValid
         })
     }
 

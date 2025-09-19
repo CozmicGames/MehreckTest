@@ -4,21 +4,50 @@
   <meta charset="UTF-8">
   <title>Mehreck</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    canvas { border: 1px solid #333; display: block; margin-bottom: 10px; }
-    button { margin: 5px; }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+    }
+
+    h1 {
+      margin: 20px 0;
+    }
+
+    canvas {
+      border: 2px solid black;
+      flex-grow: 1;
+      max-width: 80%;
+      max-height: 80%;
+    }
+
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <h1>Mehreck</h1>
 
-  <canvas id="myCanvas" width="500" height="400"></canvas>
+  <canvas id="myCanvas" width="80%" height="80%"></canvas>
   <script src="util.js"></script>
   <script src="draw.js"></script>
   <script src="script.js"></script>
 
-  <button onclick="saveProject()">Save Project</button>
-  <input type="file" id="fileInput" />
+  <div class="controls">
+    <button onclick="saveProject()">Save Project</button>
+    <input type="file" id="fileInput" />
+  </div>
   
   <script>
     setup(12);

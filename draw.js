@@ -91,7 +91,7 @@ function drawBackground(ctx, centerX, centerY, angles, radius, useCircle, scaleC
     *   Draw center
     */
 
-    const centerRadius = radii[radii.length - 1] / 2;
+    const centerRadius = radii[radii.length - 1] * 0.2;
 
     ctx.fillStyle = "gray";
     ctx.beginPath();

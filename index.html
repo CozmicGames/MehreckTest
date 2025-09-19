@@ -30,6 +30,13 @@
       gap: 10px;
     }
 
+    .slider-control {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     button {
       padding: 8px 16px;
       font-size: 14px;
@@ -40,18 +47,26 @@
   <h1>Mehreck</h1>
 
   <canvas id="myCanvas" width="80%" height="80%"></canvas>
+  
+  <div class="controls">
+    <!--
+    <button onclick="saveProject()">Save Project</button>
+    <input type="file" id="fileInput" />
+    -->
+    
+    <div class="slider-control">
+        <label for="categoryCountSlider">Anzahl Kategorien:</label>
+        <input type="range" id="categoryCountSlider" min="3" max="20" value="5">
+        <span id="categoryCountValue">5</span>
+
+        <label for="scaleSlider">Skalierung:</label>
+        <input type="range" id="scaleSlider" min="5" max="100" value="50">
+        <span id="scaleValue">50</span>
+    </div>
+  </div>
+
   <script src="util.js"></script>
   <script src="draw.js"></script>
   <script src="script.js"></script>
-
-  <div class="controls">
-    <button onclick="saveProject()">Save Project</button>
-    <input type="file" id="fileInput" />
-  </div>
-  
-  <script>
-    setup(12);
-  </script>
-
 </body>
 </html>

@@ -1,16 +1,41 @@
 
 const canvas = document.getElementById("myCanvas");
 let offsetX, offsetY;
-const dataPoints = [];
-const dataHandles = [];
+let dataPoints = [];
+let dataHandles = [];
 let draggedHandle = null;
+
+const categoryCountSlider = document.getElementById("categoryCountSlider");
+const categoryCountValue = document.getElementById("categoryCountValue");
+let currentCategoryCount = parseInt(categoryCountSlider.value, 10);
+
+const scaleSlider = document.getElementById("scaleSlider");
+const scaleValue = document.getElementById("scaleValue");
+let currentScaleValue = parseInt(scaleSlider.value, 10);
+
+categoryCountSlider.addEventListener("input", e => {
+    currentCategoryCount = parseInt(e.target.value, 10);
+    categoryCountValue.textContent = currentCategoryCount;
+    setup(currentCategoryCount);
+});
+
+scaleSlider.addEventListener("input", e => {
+    currentScaleValue = parseInt(e.target.value, 10);
+    scaleValue.textContent = currentScaleValue;
+    draw();
+});
+
+setup(currentCategoryCount);
+
 
 /*
 *   Setup graph
-*   Needs to be called at the beginning
 */
 function setup(categoryCount) {
-    for(let i = 0; i < categoryCount; i++) {
+    dataPoints = [];
+    dataHandles = [];
+
+    for (let i = 0; i < categoryCount; i++) {
         dataPoints.push(0.5);
         dataHandles.push({
             index: i,
@@ -104,7 +129,7 @@ function draw() {
     drawGraph(canvas, dataHandles.map(handle => ({
         dataValue: dataPoints[handle.index],
         isValid: handle.isValid
-    })), "red", getGraphRadius(canvas), false, 9, 4);
+    })), "red", getGraphRadius(canvas), false, currentScaleValue, 1000);
 }
 
 

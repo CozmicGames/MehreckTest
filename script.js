@@ -25,17 +25,17 @@ scaleSlider.addEventListener("input", e => {
     draw();
 });
 
-setup(currentCategoryCount);
+setup();
 
 
 /**
 *   Setup graph
 */
-function setup(categoryCount) {
+function setup() {
     dataPoints = [];
     dataHandles = [];
 
-    for (let i = 0; i < categoryCount; i++) {
+    for (let i = 0; i < currentCategoryCount; i++) {
         dataPoints.push(0.5);
         dataHandles.push({
             index: i,
@@ -87,10 +87,10 @@ function onInputDown(x, y, size) {
     const inputY = y - rect.top;
     const graphRadius = getGraphRadius(canvas);
 
-    for (let i = 0; i < categoryCount; i++) {
+    for (let i = 0; i < currentCategoryCount; i++) {
         const handle = dataHandles[i];
         const dataPoint = dataPoints[handle.index];
-        const angle = getCategoryAngle(handle.index, categoryCount);
+        const angle = getCategoryAngle(handle.index, currentCategoryCount);
 
         const handleX = canvas.width / 2 + graphRadius * dataPoint * Math.cos(angle);
         const handleY = canvas.height / 2 + graphRadius * dataPoint * Math.sin(angle);
@@ -115,7 +115,7 @@ function onInputMove(x, y) {
     const inputY = y - rect.top - offsetY;
     const graphRadius = getGraphRadius(canvas);
 
-    const angle = getCategoryAngle(draggedHandle.index, categoryCount);
+    const angle = getCategoryAngle(draggedHandle.index, currentCategoryCount);
     
     const lineStart = {
         x: canvas.width / 2,

@@ -1,62 +1,133 @@
 const canvas = document.getElementById("appCanvas");
+const categoryUISize = 100;
+
 let offsetX, offsetY;
 let dataHandles = [];
 let draggedHandle = null;
 let profiles = [];
 let currentProfileID = 0;
-
-const categoryCount = 6;
-const currentScaleValue = 5;
-
-setup();
+let categoryCount = 0;
+let scaleSize = 0;
 
 /**
-*   Setup graph
+*   Setup
 */
-function setup() {
+canvas.width = canvas.offsetWidth;
+canvas.height = canvas.offsetHeight;
+
+fetch('./data.json')
+    .then(result => result.json())
+    .then(data => {
+        if (data.categories == null || !Array.isArray(data.categories) || data.categories.length === 0 || data.scaleSize == null) {
+            console.error("Invalid categories data");
+            return;
+        }
+
+        categoryCount = data.categories.length;
+        scaleSize = data.scaleSize;
+
+        console.log(`Loaded ${categoryCount} categories`);
+        console.log(`Scale size: ${scaleSize}`);
+
+        for (let i = 0; i < categoryCount; i++) {
+            let category = data.categories[i];
+
+            if (category == null) {
+                console.error(`Invalid category at index ${i}`);
+                continue;
+            }
+
+            if (category.color == null) {
+                console.error(`Invalid color for category at index ${i}`);
+                continue;
+            }
+
+            if (category.options == null || !Array.isArray(category.options)) {
+                console.error(`Invalid options for category at index ${i}`);
+                continue;
+            }
+
+            if (category.options.length != 3) {
+                console.error(`Invalid options length for category at index ${i}`);
+                continue;
+            }
+
+            if (category.options[0].name == null || category.options[1].name == null || category.options[2].name == null) {
+                console.error(`Invalid option name for category at index ${i}`);
+                continue;
+            }
+
+            if (category.options[0].description == null || category.options[1].description == null || category.options[2].description == null) {
+                console.error(`Invalid option description for category at index ${i}`);
+                continue;
+            }
+
+            let angle = getCategoryAngle(i, categoryCount);
+            let radius = getGraphRadius(canvas) + categoryUISize / 2;
+            let x = canvas.width / 2 + Math.cos(angle) * radius;
+            let y = canvas.height / 2 + Math.sin(angle) * radius;
+
+            let button = createCategoryUI(x, y, categoryUISize, radToDeg(angle) + 180, category.color, [
+                { text: category.options[0].name, tooltip: category.options[0].description },
+                { text: category.options[1].name, tooltip: category.options[1].description },
+                { text: category.options[2].name, tooltip: category.options[2].description }
+            ], category.name);
+
+            categoryButtons.push(button);
+        }
+
+        dataHandles = [];
+
+        for (let i = 0; i < categoryCount; i++) {
+            dataHandles.push({
+                index: i
+            });
+        }
+
+        draw();
+    })
+    .catch(error => console.error('Error loading JSON:', error));
+
+window.addEventListener("resize", e => {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    dataHandles = [];
-
     for (let i = 0; i < categoryCount; i++) {
-        dataHandles.push({
-            index: i
-        });
+        let angle = getCategoryAngle(i, categoryCount);
+        let radius = getGraphRadius(canvas);
+        let x = canvas.width / 2 + Math.cos(angle) * radius;
+        let y = canvas.height / 2 + Math.sin(angle) * radius;
+
+        categoryButtons[i].updatePosition(x, y, radToDeg(angle) + 180);
     }
 
-    window.addEventListener("resize", e => {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-        draw();
-    });
-
-    canvas.addEventListener("mousedown", e => {
-        onInputDown(e.clientX, e.clientY, 0);
-    });
-
-    canvas.addEventListener("mousemove", e => {
-        onInputMove(e.clientX, e.clientY, 0);
-    });
-
-    canvas.addEventListener("mouseup", () => {
-        onInputUp();
-    });
-
-    canvas.addEventListener("touchstart", e => {
-        onInputDown(e.clientX, e.clientY, 3);
-    });
-
-    canvas.addEventListener("touchmove", e => {
-        onInputMove(e.clientX, e.clientY, 3);
-    });
-
-    canvas.addEventListener("touchend", () => {
-        onInputUp();
-    });
-
     draw();
-}
+});
+
+canvas.addEventListener("mousedown", e => {
+    onInputDown(e.clientX, e.clientY, 0);
+    console.log(e.clientX, e.clientY);
+});
+
+canvas.addEventListener("mousemove", e => {
+    onInputMove(e.clientX, e.clientY, 0);
+});
+
+canvas.addEventListener("mouseup", () => {
+    onInputUp();
+});
+
+canvas.addEventListener("touchstart", e => {
+    onInputDown(e.clientX, e.clientY, 3);
+});
+
+canvas.addEventListener("touchmove", e => {
+    onInputMove(e.clientX, e.clientY, 3);
+});
+
+canvas.addEventListener("touchend", () => {
+    onInputUp();
+});
 
 function createProfile(id) {
     const profile = new Profile(id);
@@ -159,13 +230,13 @@ function draw() {
 
     let hoveredIndex = draggedHandle ? draggedHandle.index : -1;
 
-    drawGraph(canvas, profiles, currentProfileID, categoryCount, hoveredIndex, getGraphRadius(canvas), false, currentScaleValue, 1000);
+    drawGraph(canvas, profiles, currentProfileID, categoryCount, hoveredIndex, getGraphRadius(canvas), false, scaleSize, 1000);
 }
 
 
-
-
-
+/**
+ * 
+ */
 
 
 /** 

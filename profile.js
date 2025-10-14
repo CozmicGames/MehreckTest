@@ -1,24 +1,12 @@
 class Profile {
     constructor(id) {
-        this._id = id;
+        this.id = id;
         this.resetDataPoints();
-        this._isVisible = true;
-    }
-
-    get id() {
-        return this._id;
+        this.isVisible = true;
     }
 
     get color() {
-        return getProfileColor(this._id);
-    }
-
-    get isVisible() {
-        return this._isVisible;
-    }
-
-    set isVisible(value) {
-        this._isVisible = value;
+        return getProfileColor(this.id);
     }
 
     resetDataPoints() {

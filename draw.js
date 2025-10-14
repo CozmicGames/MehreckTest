@@ -153,16 +153,25 @@ function drawData(ctx, centerX, centerY, anglesAndRadii, color, hoveredIndex, is
 
         drawLines();
         drawPoints(POINT_SIZE + BORDER_SIZE);
+
+        /** Draw foreground */
+
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = LINE_SIZE;
+
+        drawLines();
+        drawPoints(POINT_SIZE);
+    } else {
+        /** Draw foreground */
+
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = LINE_SIZE * 0.8;
+
+        drawLines();
+        drawPoints(POINT_SIZE * 0.8);
     }
-
-    /** Draw foreground */
-
-    ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = LINE_SIZE;
-
-    drawLines();
-    drawPoints(POINT_SIZE);
 }
 
 function drawGraph(canvas, profiles, currentProfileID, categoryCount, hoveredIndex, radius, useCircle, scaleCount, scaleStep) {
@@ -205,7 +214,7 @@ function drawGraph(canvas, profiles, currentProfileID, categoryCount, hoveredInd
             continue;
 
         const isCurrentProfile = (profile.id === currentProfileID);
-        
+
         if (!isCurrentProfile)
             drawProfile(profile, false);
     }

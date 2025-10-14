@@ -1,13 +1,34 @@
 const canvas = document.getElementById("appCanvas");
-const categoryUISize = 100;
+const categoryUISize = 120;
+let activeButton = null;
+let profileCount = 0;
+let categoryButtons = [];
 
-let offsetX, offsetY;
-let dataHandles = [];
-let draggedHandle = null;
-let profiles = [];
-let currentProfileID = 0;
+const loadButton = document.getElementById("loadButton");
+const saveButton = document.getElementById("saveButton");
+const addButton = document.getElementById("addButton");
+
+/**
+ * Variables loaded from data
+ */
+
 let categoryCount = 0;
 let scaleSize = 0;
+
+/**
+ * Variables for dragging
+ */
+
+let offsetX, offsetY;
+let draggedHandle = null;
+let dataHandles = [];
+
+/**
+ * Session variables, savable and loadable
+ */
+
+let profiles = [];
+let currentProfileID = 0;
 
 /**
 *   Setup
@@ -25,9 +46,6 @@ fetch('./data.json')
 
         categoryCount = data.categories.length;
         scaleSize = data.scaleSize;
-
-        console.log(`Loaded ${categoryCount} categories`);
-        console.log(`Scale size: ${scaleSize}`);
 
         for (let i = 0; i < categoryCount; i++) {
             let category = data.categories[i];
@@ -63,14 +81,14 @@ fetch('./data.json')
             }
 
             let angle = getCategoryAngle(i, categoryCount);
-            let radius = getGraphRadius(canvas) + categoryUISize / 2;
+            let radius = getGraphRadius(canvas) + categoryUISize * 1.1;
             let x = canvas.width / 2 + Math.cos(angle) * radius;
             let y = canvas.height / 2 + Math.sin(angle) * radius;
 
             let button = createCategoryUI(x, y, categoryUISize, radToDeg(angle) + 180, category.color, [
-                { text: category.options[0].name, tooltip: category.options[0].description },
-                { text: category.options[1].name, tooltip: category.options[1].description },
-                { text: category.options[2].name, tooltip: category.options[2].description }
+                { title: category.options[0].name, description: category.options[0].description },
+                { title: category.options[1].name, description: category.options[1].description },
+                { title: category.options[2].name, description: category.options[2].description }
             ], category.name);
 
             categoryButtons.push(button);
@@ -94,11 +112,11 @@ window.addEventListener("resize", e => {
 
     for (let i = 0; i < categoryCount; i++) {
         let angle = getCategoryAngle(i, categoryCount);
-        let radius = getGraphRadius(canvas);
+        let radius = getGraphRadius(canvas) + categoryUISize * 1.1;
         let x = canvas.width / 2 + Math.cos(angle) * radius;
         let y = canvas.height / 2 + Math.sin(angle) * radius;
 
-        categoryButtons[i].updatePosition(x, y, radToDeg(angle) + 180);
+        categoryButtons[i].setPosition(x, y, radToDeg(angle) + 180);
     }
 
     draw();
@@ -129,6 +147,21 @@ canvas.addEventListener("touchend", () => {
     onInputUp();
 });
 
+addButton.addEventListener("click", () => {
+    const profileID = profileCount++;
+    const profile = createProfile(profileID);
+    createProfileUI(profile);
+    draw();
+});
+
+loadButton.addEventListener("click", () => {
+    loadProject();
+});
+
+saveButton.addEventListener("click", () => {
+    saveProject();
+});
+
 function createProfile(id) {
     const profile = new Profile(id);
     profiles[id] = profile;
@@ -142,6 +175,48 @@ function createProfile(id) {
 
 function removeProfile(id) {
     profiles[id] = null;
+}
+
+function setActiveProfileButton(id) {
+    const container = document.getElementById("profileButtons");
+
+    let button = null;
+    for (let i = 0; i < container.children.length; i++) {
+        const child = container.children[i];
+        const childButton = child.getElementsByClassName("profile-ui")[0];
+
+        if (childButton != null && child.dataset.profileId == id) {
+            button = childButton;
+            break;
+        }
+    }
+
+console.log("Setting active profile button:", id, button);
+
+    if (!button)
+        return;
+
+    if (activeButton && activeButton !== button) {
+        activeButton.classList.remove("active");
+        activeButton.classList.remove("expanded");
+    }
+
+    activeButton = button;
+    button.classList.add("active");
+    button.classList.add("expanded");
+
+    currentProfileID = id;
+}
+
+function clearProfiles() {
+    const container = document.getElementById("profileButtons");
+
+    profiles = [];
+    currentProfileID = 0;
+    activeButton = null;
+    profileCount = 0;
+    while (container.firstChild)
+        container.removeChild(container.firstChild);
 }
 
 /**
@@ -235,29 +310,99 @@ function draw() {
 
 
 /**
- * 
+ * Save project (JSON)
  */
 
-
-/** 
-// Save project (JSON)
 function saveProject() {
-  //const json = JSON.stringify(shapes);
-  //const blob = new Blob([json], { type: "application/json" });
-  //const link = document.createElement("a");
-  //link.href = URL.createObjectURL(blob);
-  //link.download = "project.json";
-  //link.click();
+    const json = JSON.stringify({
+        profiles: profiles,
+        currentProfileID: currentProfileID,
+        activeCategoryCorners: categoryButtons.map(ui => ui.getActiveCornerIndex())
+    });
+
+    const blob = new Blob([json], { type: "application/json" });
+    const link = document.createElement("a");
+
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = "project.json";
+    link.click();
+    URL.revokeObjectURL(url);
 }
-// Load project (JSON)
-document.getElementById("fileInput").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    //shapes = JSON.parse(evt.target.result);
-    draw();
-  };
-  reader.readAsText(file);
-});
-*/
+
+/**
+ * Load project (JSON)
+ */
+
+function loadProject() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file)
+            return;
+
+        clearProfiles();
+
+        const reader = new FileReader();
+
+        reader.onload = function (evt) {
+            const data = JSON.parse(evt.target.result);
+
+            if (data.profiles == null || !Array.isArray(data.profiles)) {
+                console.error("Invalid profiles data");
+                window.alert("Fehler beim Laden der Datei: Ungültige Profildaten.");
+                return;
+            }
+
+            if (data.currentProfileID == null || typeof data.currentProfileID !== "number" || data.currentProfileID < 0 || data.currentProfileID >= data.profiles.length) {
+                console.error("Invalid currentProfileID");
+                window.alert("Fehler beim Laden der Datei: Ungültige aktuelle Profil-ID.");
+                return;
+            }
+
+            if (data.activeCategoryCorners == null || !Array.isArray(data.activeCategoryCorners) || data.activeCategoryCorners.length !== categoryButtons.length) {
+                console.error("Invalid activeCategoryCorners data");
+                window.alert("Fehler beim Laden der Datei: Ungültige aktive Kategorien-Ecken.");
+                return;
+            }
+
+            profiles = [];
+
+            for (let i = 0; i < data.profiles.length; i++) {
+                const profileData = data.profiles[i];
+
+                if (profileData == null || profileData.id == null || typeof profileData.id !== "number") {
+                    console.error(`Invalid profile data at index ${i}: ${JSON.stringify(profileData)}`);
+                    window.alert(`Fehler beim Laden der Datei: Ungültige Profildaten bei Profil ${i}.`);
+                    profiles[i] = null;
+                    continue;
+                }
+
+                const profile = new Profile(profileData.id);
+                profile.isVisible = profileData.isVisible === true;
+                profile.dataPoints = Array.isArray(profileData.dataPoints) ? profileData.dataPoints : [];
+                profile.dataPointsValid = Array.isArray(profileData.dataPointsValid) ? profileData.dataPointsValid : [];
+                profiles[profile.id] = profile;
+
+                createProfileUI(profile);
+            }
+
+            for (let i = 0; i < categoryButtons.length; i++) {
+                const cornerIndex = data.activeCategoryCorners[i];
+                if (cornerIndex == null || typeof cornerIndex !== "number" || cornerIndex < 0 || cornerIndex > 2) {
+                    console.error(`Invalid corner index for category button ${i}: ${cornerIndex}`);
+                    window.alert(`Fehler beim Laden der Datei: Ungültiger Eckenindex für Kategorie ${i}.`);
+                    continue;
+                }   
+                categoryButtons[i].setActiveCornerIndex(cornerIndex);
+            }
+
+            setActiveProfileButton(data.currentProfileID);
+            draw();
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}

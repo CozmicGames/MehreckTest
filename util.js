@@ -24,7 +24,7 @@ function getCategoryAngle(index, count) {
 }
 
 function getGraphRadius(canvas) {
-    return Math.min(canvas.width, canvas.height) / 2 - 80;
+    return Math.min(canvas.width, canvas.height) / 2 - categoryUISize * 2;
 }
 
 function getProfileColor(index, step = 137.508) {

@@ -191,8 +191,6 @@ function setActiveProfileButton(id) {
         }
     }
 
-console.log("Setting active profile button:", id, button);
-
     if (!button)
         return;
 

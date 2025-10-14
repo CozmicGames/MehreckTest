@@ -141,6 +141,10 @@ class ProfileUI {
 function createProfileUI(profile) {
   const container = document.getElementById("profileButtons");
   const ui = new ProfileUI(container, profile);
+
+  if(container.children.length === 1)
+    setActiveProfileButton(profile.id);
+
   return ui;
 };
 
@@ -237,7 +241,7 @@ class CategoryUI {
     const desired = -this.baseCornerAngles[i];
     const delta = shortestAngleDelta(desired, this.rotation);
     const endRot = this.rotation + delta;
-    this.animation = { start: this.rotation, end: endRot, t0: performance.now(), dur: 500 };
+    this.animation = { start: this.rotation, end: endRot, t0: performance.now(), dur: 750 };
   }
 
   getActiveCornerIndex() {

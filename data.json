@@ -1,5 +1,6 @@
 {
     "scaleSize": 10,
+    "isDualScale": false,
     "categories": [
         {
             "name": "Macht",

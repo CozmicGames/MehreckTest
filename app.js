@@ -1,52 +1,33 @@
 /**
- * Types
+ * Settings, UI constants
  */
 
-class Profile {
-    constructor(id) {
-        this.id = id;
-        this.resetDataPoints();
-        this.isVisible = true;
-    }
-
-    get color() {
-        return getProfileColor(this.id);
-    }
-
-    resetDataPoints() {
-        this.dataPoints = [];
-        this.dataPointsValid = [];
-    }
-
-    getDataPoint(index) {
-        return this.dataPoints[index];
-    }
-
-    setDataPoint(index, value) {
-        this.dataPoints[index] = value;
-        this.dataPointsValid[index] = true;
-    }
-
-    isDataPointValid(index) {
-        return this.dataPointsValid[index];
-    }
+const settings = {
+    showLinesBetweenDataPoints: true,
+    scaleLineSmoothing: 0.0
 }
+
+const categoryUISize = 120;
+const handleRadiusNormal = 10;
+const handleRadiusHovered = 13;
+const lineSizeCurrentProfile = 8;
+const lineSizeOtherProfiles = 6;
+const handleRadiusOtherProfiles = 8;
 
 /**
  * Global Variables
  */
 
 const canvas = document.getElementById("appCanvas");
-const categoryUISize = 120;
+const loadButton = document.getElementById("loadButton");
+const saveButton = document.getElementById("saveButton");
+const imageButton = document.getElementById("imageButton");
+const addButton = document.getElementById("addButton");
 let activeButton = null;
 let profileCount = 0;
 let categoryButtons = [];
 let categoryAngles = [];
 let isMainLoopRunning = false;
-
-const loadButton = document.getElementById("loadButton");
-const saveButton = document.getElementById("saveButton");
-const addButton = document.getElementById("addButton");
 
 /**
  * Variables loaded from data
@@ -180,6 +161,8 @@ canvas.addEventListener("mouseup", () => {
     onInputUp();
 });
 
+//TODO: Add touch support
+/**
 canvas.addEventListener("touchstart", e => {
     onInputDown(e.clientX, e.clientY, 3);
 });
@@ -191,32 +174,49 @@ canvas.addEventListener("touchmove", e => {
 canvas.addEventListener("touchend", () => {
     onInputUp();
 });
+*/
 
-addButton.addEventListener("click", () => {
+if (loadButton) loadButton.addEventListener("click", () => {
+    loadProject();
+});
+
+if (saveButton) saveButton.addEventListener("click", () => {
+    saveProject();
+});
+
+if (imageButton) imageButton.addEventListener("click", async () => {
+    await saveAsImage();
+});
+
+if (addButton) addButton.addEventListener("click", () => {
     const profileID = profileCount++;
     const profile = createProfile(profileID);
     createProfileUI(profile);
     draw();
 });
 
-loadButton.addEventListener("click", () => {
-    loadProject();
-});
-
-saveButton.addEventListener("click", () => {
-    saveProject();
-});
-
 /**
  *  Profile Management
  */
+
+class Profile {
+    constructor(id) {
+        this.id = id;
+        this.dataPoints = [];
+        this.isVisible = true;
+    }
+
+    get color() {
+        return getProfileColor(this.id);
+    }
+}
 
 function createProfile(id) {
     const profile = new Profile(id);
     profiles[id] = profile;
 
     for (let i = 0; i < categoryCount; i++) {
-        profile.setDataPoint(i, 0.5);
+        profile.dataPoints[i] = 0.5;
     }
 
     return profile;
@@ -282,7 +282,7 @@ function onInputDown(x, y, size) {
 
     for (let i = 0; i < categoryCount; i++) {
         const handle = dataHandles[i];
-        const dataPoint = currentProfile.getDataPoint(handle.index);
+        const dataPoint = currentProfile.dataPoints[handle.index];
         const angle = categoryAngles[handle.index];
 
         const handleX = canvas.width / 2 + graphRadius * dataPoint * Math.cos(angle);
@@ -291,7 +291,9 @@ function onInputDown(x, y, size) {
         const dx = inputX - handleX;
         const dy = inputY - handleY;
 
-        if (dx * dx + dy * dy <= 8 * 8 + size * size) {
+        const handleRadius = (hoveredHandle == handle) ? handleRadiusHovered : handleRadiusNormal;
+
+        if (dx * dx + dy * dy <= handleRadius * handleRadius + size * size) {
             draggedHandle = handle;
             offsetX = dx;
             offsetY = dy;
@@ -317,7 +319,7 @@ function onInputMove(x, y, size) {
 
         for (let i = 0; i < categoryCount; i++) {
             const handle = dataHandles[i];
-            const dataPoint = currentProfile.getDataPoint(handle.index);
+            const dataPoint = currentProfile.dataPoints[handle.index];
             const angle = categoryAngles[handle.index];
 
             const handleX = canvas.width / 2 + graphRadius * dataPoint * Math.cos(angle);
@@ -326,7 +328,9 @@ function onInputMove(x, y, size) {
             const dx = inputX - handleX;
             const dy = inputY - handleY;
 
-            if (dx * dx + dy * dy <= 8 * 8 + size * size) { //TODO: Set handle size as constant
+            const handleRadius = (hoveredHandle == handle) ? handleRadiusHovered : handleRadiusNormal;
+
+            if (dx * dx + dy * dy <= handleRadius * handleRadius + size * size) {
                 newHoveredHandle = handle;
                 break;
             }
@@ -362,7 +366,7 @@ function onInputMove(x, y, size) {
     let t = (APx * ABx + APy * ABy) / ab2;
     t = Math.max(0, Math.min(1, t));
 
-    currentProfile.setDataPoint(draggedHandle.index, t);
+    currentProfile.dataPoints[draggedHandle.index] = t;
 
     draw();
 }
@@ -384,14 +388,10 @@ function draw() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    /**
-     * Impl
-     */
-
     function drawBackground(radius, scaleStep) {
         const backgroundColor = '#6b6b6bff';
 
-        function drawScaleLevel(radius, circleAmount, isMain) {
+        function drawScaleLevel(radius, isMain) {
             function getSamplesPerEdge(n, t) {
                 const base = 8;
                 const extra = Math.round(24 * t);
@@ -414,10 +414,11 @@ function draw() {
                 vertices.push({ angle, point: getCirclePoint(angle) });
             }
 
-            const circleAmountClamped = Math.max(0, Math.min(1, circleAmount));
+            const circleAmountClamped = Math.max(0, Math.min(1, settings.scaleLineSmoothing));
             const samplesPerEdge = getSamplesPerEdge(categoryCount, circleAmountClamped);
             const firstArcPoint = lerpPoint(vertices[0].point, vertices[0].point, 0);
 
+            ctx.save();
             ctx.beginPath();
             ctx.moveTo(firstArcPoint.x, firstArcPoint.y);
 
@@ -456,11 +457,12 @@ function draw() {
             }
 
             ctx.stroke();
+            ctx.restore();
         }
 
         const radii = [];
         //TODO: Dual Scale
-        for (let i = 0; i < scaleSize; i++) {
+        for (let i = 0; i <= scaleSize - 1; i++) {
             const scaleRadius = radius * (scaleSize - i) / scaleSize;
             radii.push(scaleRadius);
         }
@@ -469,9 +471,10 @@ function draw() {
             const scaleRadius = radii[i];
             const isMain = (i % scaleStep) == 0;
 
-            drawScaleLevel(scaleRadius, 0.5, isMain);
+            drawScaleLevel(scaleRadius, isMain);
         }
 
+        ctx.save();
         ctx.lineWidth = 8;
         ctx.strokeStyle = backgroundColor;
         ctx.fillStyle = backgroundColor;
@@ -495,12 +498,11 @@ function draw() {
             ctx.fill();
         }
 
-        const centerRadius = radii[radii.length - 1] * 0.2;
-
         ctx.fillStyle = backgroundColor;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
         ctx.fill();
+        ctx.restore();
     }
 
     function drawData(anglesAndRadii, color, isCurrentProfile) {
@@ -509,16 +511,15 @@ function draw() {
             y: centerY + angleAndRadius.radius * Math.sin(angleAndRadius.angle)
         }));
 
-        const LINE_SIZE = 7;
-        const POINT_SIZE = 9;
-        const BORDER_SIZE = 1.5;
+        const BORDER_SIZE = 1;
+        const BORDER_COLOR = "black";
 
-        function drawLines() {
+        function drawLines(isCurrentProfile, isBorder) {
+            const baseLineSize = isCurrentProfile ? lineSizeCurrentProfile : lineSizeOtherProfiles;
+            ctx.strokeStyle = isBorder ? BORDER_COLOR : color;
+            ctx.lineWidth = isBorder ? baseLineSize : baseLineSize - BORDER_SIZE * 2;
             ctx.beginPath();
             for (let i = 0; i < points.length; i++) {
-                //if (!anglesAndRadii[i].isValid)
-                //    continue; TODO: Check is needed
-
                 const p1 = points[i];
                 const p2 = points[(i + 1) % points.length];
                 ctx.moveTo(p1.x, p1.y);
@@ -527,68 +528,47 @@ function draw() {
             ctx.stroke();
         }
 
-        function drawPoints(size, isCurrentProfile) {
+        function drawPoints(isCurrentProfile, isBorder) {
             for (let i = 0; i < points.length; i++) {
                 const point = points[i];
 
-                if (i == hoveredIndex && isCurrentProfile) {
-                    let oldFillStyle = ctx.fillStyle;
-                    ctx.fillStyle = oldFillStyle * 1.2;
+                let pointRadius = isCurrentProfile ? handleRadiusNormal : handleRadiusOtherProfiles;
 
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, size * 1.5, 0, 2 * Math.PI);
-                    ctx.fill();
+                if (i == hoveredIndex && isCurrentProfile)
+                    pointRadius = handleRadiusHovered;
 
-                    ctx.fillStyle = oldFillStyle;
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, size, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
+                ctx.fillStyle = isBorder ? BORDER_COLOR : color;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, isBorder ? pointRadius : pointRadius - BORDER_SIZE, 0, 2 * Math.PI);
+                ctx.fill();
             }
         }
 
-        if (isCurrentProfile) {
-            /** Draw borders */
+        ctx.save();
 
-            ctx.fillStyle = "black";
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = LINE_SIZE + BORDER_SIZE * 2;
+        if (settings.showLinesBetweenDataPoints)
+            drawLines(isCurrentProfile, true);
 
-            drawLines();
-            drawPoints(POINT_SIZE + BORDER_SIZE, true);
+        drawPoints(isCurrentProfile, true);
 
-            /** Draw foreground */
+        if (settings.showLinesBetweenDataPoints)
+            drawLines(isCurrentProfile, false);
 
-            ctx.fillStyle = color;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = LINE_SIZE;
+        drawPoints(isCurrentProfile, false);
 
-            drawLines();
-            drawPoints(POINT_SIZE, true);
-        } else {
-            /** Draw foreground */
-
-            ctx.fillStyle = color;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = LINE_SIZE * 0.8;
-
-            drawLines();
-            drawPoints(POINT_SIZE * 0.8, false);
-        }
+        ctx.restore();
     }
 
     function drawProfile(profile, isCurrentProfile) {
         const dataAnglesAndRadii = [];
         for (let i = 0; i < categoryCount; i++) {
-            const dataPoint = profile.getDataPoint(i);
+            const dataPoint = profile.dataPoints[i];
             const dataPointAngle = categoryAngles[i];
             const dataPointRadius = radius * dataPoint;
 
             dataAnglesAndRadii.push({
                 angle: dataPointAngle,
-                radius: dataPointRadius,
-                isValid: profile.isDataPointValid(i)
+                radius: dataPointRadius
             });
         }
 
@@ -690,7 +670,6 @@ function loadProject() {
                 const profile = new Profile(profileData.id);
                 profile.isVisible = profileData.isVisible === true;
                 profile.dataPoints = Array.isArray(profileData.dataPoints) ? profileData.dataPoints : [];
-                profile.dataPointsValid = Array.isArray(profileData.dataPointsValid) ? profileData.dataPointsValid : [];
                 profiles[profile.id] = profile;
 
                 createProfileUI(profile);
@@ -715,328 +694,348 @@ function loadProject() {
 }
 
 /**
+ * Save as image
+ */
+
+async function saveAsImage() {
+    const html2canvas = await loadHtml2Canvas();
+    const element = document.getElementById("appContainer");
+
+    if (!element) {
+        console.error("App container not found.");
+        return;
+    }
+
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+    const link = document.createElement("a");
+    link.download = "image.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+}
+
+/**
  * UI Creation Functions
  */
 
 class ProfileUI {
-	constructor(parent, profile) {
-		this.parent = parent;
-		this.profile = profile;
+    constructor(parent, profile) {
+        this.parent = parent;
+        this.profile = profile;
 
-		this.wrapper = document.createElement("div");
-		this.wrapper.className = "profile-ui-wrapper";
-		this.wrapper.dataset.profileId = profile.id;
-		parent.appendChild(this.wrapper);
+        this.wrapper = document.createElement("div");
+        this.wrapper.className = "profile-ui-wrapper";
+        this.wrapper.dataset.profileId = profile.id;
+        parent.appendChild(this.wrapper);
 
-		const button = document.createElement("div");
-		button.className = "profile-ui";
-		button.dataset.id = profile.id;
+        const button = document.createElement("div");
+        button.className = "profile-ui";
+        button.dataset.id = profile.id;
 
-		const colorBox = document.createElement("div");
-		colorBox.className = "color-box";
-		colorBox.style.background = profile.color;
+        const colorBox = document.createElement("div");
+        colorBox.className = "color-box";
+        colorBox.style.background = profile.color;
 
-		const textField = document.createElement("input");
-		textField.type = "text";
-		textField.className = "text-field";
-		textField.placeholder = `Name eingeben...`;
+        const textField = document.createElement("input");
+        textField.type = "text";
+        textField.className = "text-field";
+        textField.placeholder = `Name eingeben...`;
 
-		const iconsContainer = document.createElement("div");
-		iconsContainer.className = "icons";
+        const iconsContainer = document.createElement("div");
+        iconsContainer.className = "icons";
 
-		const iconButtons = {};
+        const iconButtons = {};
 
-		const iconStates = {
-			visible: {
-				alwaysVisible: true,
-				booleanState: false,
-				setTrue: {
-					normal: "resources/visible_icon.png",
-					hover: "resources/visible_hovered_icon.png",
-					active: "resources/visible_pressed_icon.png",
-					callback: (_button, state) => {
-						profile.isVisible = state;
-						draw();
-					}
-				},
-				setFalse: {
-					normal: "resources/invisible_icon.png",
-					hover: "resources/invisible_hovered_icon.png",
-					active: "resources/invisible_pressed_icon.png",
-					callback: (_button, state) => {
-						profile.isVisible = state;
-						draw();
-					}
-				}
-			},
-			delete: {
-				alwaysVisible: false,
-				normal: "resources/delete_icon.png",
-				hover: "resources/delete_hovered_icon.png",
-				active: "resources/delete_pressed_icon.png",
-				callback: button => {
-					if (activeButton === button)
-						activeButton = null;
+        const iconStates = {
+            visible: {
+                alwaysVisible: true,
+                booleanState: true,
+                setTrue: {
+                    normal: "resources/visible_icon.png",
+                    hover: "resources/visible_hovered_icon.png",
+                    active: "resources/visible_pressed_icon.png",
+                    callback: (_button, state) => {
+                        profile.isVisible = state;
+                        draw();
+                    }
+                },
+                setFalse: {
+                    normal: "resources/invisible_icon.png",
+                    hover: "resources/invisible_hovered_icon.png",
+                    active: "resources/invisible_pressed_icon.png",
+                    callback: (_button, state) => {
+                        profile.isVisible = state;
+                        draw();
+                    }
+                }
+            },
+            delete: {
+                alwaysVisible: false,
+                normal: "resources/delete_icon.png",
+                hover: "resources/delete_hovered_icon.png",
+                active: "resources/delete_pressed_icon.png",
+                callback: button => {
+                    if (activeButton === button)
+                        activeButton = null;
 
-					parent.removeChild(button.parentElement);
-					removeProfile(profile.id);
-					draw();
-				}
-			}
-		}
+                    parent.removeChild(button.parentElement);
+                    removeProfile(profile.id);
+                    draw();
+                }
+            }
+        }
 
-		Object.entries(iconStates).forEach(([name, states]) => {
-			const iconButton = document.createElement("button");
-			const image = document.createElement("img");
-			iconButton._image = image;
-			iconButton._states = states;
+        Object.entries(iconStates).forEach(([name, states]) => {
+            const iconButton = document.createElement("button");
+            const image = document.createElement("img");
+            iconButton._image = image;
+            iconButton._states = states;
 
-			if (typeof states.booleanState !== "undefined")
-				iconButton._currentSet = states.booleanState ? states.setTrue : states.setFalse;
-			else
-				iconButton._currentSet = states;
+            if (typeof states.booleanState !== "undefined")
+                iconButton._currentSet = states.booleanState ? states.setTrue : states.setFalse;
+            else
+                iconButton._currentSet = states;
 
-			image.src = iconButton._currentSet.normal;
-			iconButton.appendChild(image);
-			iconsContainer.appendChild(iconButton);
+            image.src = iconButton._currentSet.normal;
+            iconButton.appendChild(image);
+            iconsContainer.appendChild(iconButton);
 
-			if (states.alwaysVisible)
-				iconButton.classList.add("always-visible");
+            if (states.alwaysVisible)
+                iconButton.classList.add("always-visible");
 
-			iconButtons[name] = iconButton;
+            iconButtons[name] = iconButton;
 
-			iconButton.addEventListener("mouseover", () => image.src = iconButton._currentSet.hover || iconButton._currentSet.normal);
-			iconButton.addEventListener("mouseout", () => image.src = iconButton._currentSet.normal);
+            iconButton.addEventListener("mouseover", () => image.src = iconButton._currentSet.hover || iconButton._currentSet.normal);
+            iconButton.addEventListener("mouseout", () => image.src = iconButton._currentSet.normal);
 
-			iconButton.addEventListener("click", e => {
-				e.stopPropagation();
+            iconButton.addEventListener("click", e => {
+                e.stopPropagation();
 
-				if (typeof states.booleanState !== "undefined") {
-					states.booleanState = !states.booleanState;
-					iconButton._currentSet = states.booleanState ? states.setTrue : states.setFalse;
-					image.src = iconButton._currentSet.normal;
-				}
+                if (typeof states.booleanState !== "undefined") {
+                    states.booleanState = !states.booleanState;
+                    iconButton._currentSet = states.booleanState ? states.setTrue : states.setFalse;
+                    image.src = iconButton._currentSet.normal;
+                }
 
-				if (iconButton._currentSet.active)
-					image.src = iconButton._currentSet.active;
+                if (iconButton._currentSet.active)
+                    image.src = iconButton._currentSet.active;
 
-				if (iconButton._currentSet.callback)
-					iconButton._currentSet.callback(button, states.booleanState);
-			});
-		});
+                if (iconButton._currentSet.callback)
+                    iconButton._currentSet.callback(button, states.booleanState);
+            });
+        });
 
-		button.appendChild(colorBox);
-		button.appendChild(textField);
-		button.appendChild(iconsContainer);
-		this.wrapper.appendChild(button);
+        button.appendChild(colorBox);
+        button.appendChild(textField);
+        button.appendChild(iconsContainer);
+        this.wrapper.appendChild(button);
 
-		button.addEventListener("mouseenter", () => { if (!button.classList.contains("active")) button.classList.add("expanded"); });
-		button.addEventListener("mouseleave", () => { if (!button.classList.contains("active")) button.classList.remove("expanded"); });
-		button.addEventListener("click", e => {
-			if (e.target !== textField) {
-				setActiveProfileButton(profile.id);
-				draw();
-			}
-		});
+        button.addEventListener("mouseenter", () => { if (!button.classList.contains("active")) button.classList.add("expanded"); });
+        button.addEventListener("mouseleave", () => { if (!button.classList.contains("active")) button.classList.remove("expanded"); });
+        button.addEventListener("click", e => {
+            if (e.target !== textField) {
+                setActiveProfileButton(profile.id);
+                draw();
+            }
+        });
 
-		button.setBooleanIcon = (iconName, boolValue) => {
-			const iconButton = iconButtons[iconName];
-			if (!iconButton)
-				return;
+        button.setBooleanIcon = (iconName, boolValue) => {
+            const iconButton = iconButtons[iconName];
+            if (!iconButton)
+                return;
 
-			const states = iconButton._states;
-			if (typeof states.booleanState !== "undefined") {
-				states.booleanState = boolValue;
-				iconButton._currentSet = boolValue ? states.setTrue : states.setFalse;
-				iconButton._image.src = iconButton._currentSet.normal;
-			}
-		};
-	}
+            const states = iconButton._states;
+            if (typeof states.booleanState !== "undefined") {
+                states.booleanState = boolValue;
+                iconButton._currentSet = boolValue ? states.setTrue : states.setFalse;
+                iconButton._image.src = iconButton._currentSet.normal;
+            }
+        };
+    }
 }
 
 function createProfileUI(profile) {
-	const container = document.getElementById("profileButtons");
-	const ui = new ProfileUI(container, profile);
+    const container = document.getElementById("profileButtons");
+    const ui = new ProfileUI(container, profile);
 
-	if (container.children.length === 1)
-		setActiveProfileButton(profile.id);
+    if (container.children.length === 1)
+        setActiveProfileButton(profile.id);
 
-	return ui;
+    return ui;
 };
 
 class CategoryUI {
-	constructor(parent, size, position, targetRotation = 0, color = "#00d1ff", cornerLabels = [], centerLabelText = "") {
-		this.parent = parent;
-		this.size = size;
-		this.targetRotation = targetRotation;
-		this.rotation = 0;
-		this.color = color;
-		this.activeCorner = null;
-		this.radius = size / Math.sqrt(3);
-		this.baseCornerAngles = [0, 120, 240];
-		this.animation = null;
+    constructor(parent, size, position, targetRotation = 0, color = "#00d1ff", cornerLabels = [], centerLabelText = "") {
+        this.parent = parent;
+        this.size = size;
+        this.targetRotation = targetRotation;
+        this.rotation = 0;
+        this.color = color;
+        this.activeCorner = null;
+        this.radius = size / Math.sqrt(3);
+        this.baseCornerAngles = [0, 120, 240];
+        this.animation = null;
 
-		this.container = document.createElement("div");
-		this.container.className = "category-ui-container";
-		this.container.style.left = `${position.x}px`;
-		this.container.style.top = `${position.y}px`;
-		parent.appendChild(this.container);
+        this.container = document.createElement("div");
+        this.container.className = "category-ui-container";
+        this.container.style.left = `${position.x}px`;
+        this.container.style.top = `${position.y}px`;
+        parent.appendChild(this.container);
 
-		this.canvas = document.createElement("canvas");
-		this.canvas.className = "category-ui-canvas";
-		this.canvas.width = size;
-		this.canvas.height = size;
-		this.ctx = this.canvas.getContext("2d", { alpha: true });
-		this.container.appendChild(this.canvas);
+        this.canvas = document.createElement("canvas");
+        this.canvas.className = "category-ui-canvas";
+        this.canvas.width = size;
+        this.canvas.height = size;
+        this.ctx = this.canvas.getContext("2d", { alpha: true });
+        this.container.appendChild(this.canvas);
 
-		this.centerLabelElement = document.createElement("div");
-		this.centerLabelElement.className = "category-ui-center-label";
-		this.centerLabelElement.textContent = centerLabelText;
-		this.container.appendChild(this.centerLabelElement);
+        this.centerLabelElement = document.createElement("div");
+        this.centerLabelElement.className = "category-ui-center-label";
+        this.centerLabelElement.textContent = centerLabelText;
+        this.container.appendChild(this.centerLabelElement);
 
-		this.labelElements = [];
-		for (let i = 0; i < 3; i++) {
-			const label = document.createElement("div");
-			label.className = "category-ui-label";
-			const labelData = cornerLabels[i] || { title: "Missing corner " + i, description: "" };
-			label.innerHTML = `<div class="title">${labelData.title}</div><div class="description">${labelData.description}</div>`;
-			const normal = shadeColor(this.color, -20);
-			const hover = shadeColor(this.color, 10);
-			label.style.background = normal;
-			label.style.color = "#fff";
+        this.labelElements = [];
+        for (let i = 0; i < 3; i++) {
+            const label = document.createElement("div");
+            label.className = "category-ui-label";
+            const labelData = cornerLabels[i] || { title: "Missing corner " + i, description: "" };
+            label.innerHTML = `<div class="title">${labelData.title}</div><div class="description">${labelData.description}</div>`;
+            const normal = shadeColor(this.color, -20);
+            const hover = shadeColor(this.color, 10);
+            label.style.background = normal;
+            label.style.color = "#fff";
 
-			label.addEventListener("mouseenter", () => {
-				label.classList.add("expanded");
-				label.style.background = hover;
-				label.parentElement.appendChild(label);
-			});
+            label.addEventListener("mouseenter", () => {
+                label.classList.add("expanded");
+                label.style.background = hover;
+                label.parentElement.appendChild(label);
+            });
 
-			label.addEventListener("mouseleave", () => {
-				label.classList.remove("expanded");
-				label.style.background = normal;
-			});
+            label.addEventListener("mouseleave", () => {
+                label.classList.remove("expanded");
+                label.style.background = normal;
+            });
 
-			label.onclick = e => {
-				e.stopPropagation();
-				this.activateCorner(i);
-				startMainLoop();
-			};
+            label.onclick = e => {
+                e.stopPropagation();
+                this.activateCorner(i);
+                startMainLoop();
+            };
 
-			this.container.appendChild(label);
-			this.labelElements.push(label);
-		}
+            this.container.appendChild(label);
+            this.labelElements.push(label);
+        }
 
-		this.activeCorner = this._cornerClosestToTargetDir();
-		this.draw();
-	}
+        this.activeCorner = this._cornerClosestToTargetDir();
+        this.draw();
+    }
 
-	_cornerClosestToTargetDir() {
-		let best = 0, bestDelta = Infinity;
-		for (let i = 0; i < 3; i++) {
-			const absAngle = mod360(this.targetRotation + this.rotation + this.baseCornerAngles[i]);
-			const d = Math.abs(shortestAngleDelta(this.targetRotation, absAngle));
-			if (d < bestDelta) {
-				bestDelta = d;
-				best = i;
-			}
-		}
-		return best;
-	}
+    _cornerClosestToTargetDir() {
+        let best = 0, bestDelta = Infinity;
+        for (let i = 0; i < 3; i++) {
+            const absAngle = mod360(this.targetRotation + this.rotation + this.baseCornerAngles[i]);
+            const d = Math.abs(shortestAngleDelta(this.targetRotation, absAngle));
+            if (d < bestDelta) {
+                bestDelta = d;
+                best = i;
+            }
+        }
+        return best;
+    }
 
-	setPosition(x, y) {
-		this.container.style.left = `${x}px`;
-		this.container.style.top = `${y}px`;
-	}
+    setPosition(x, y) {
+        this.container.style.left = `${x}px`;
+        this.container.style.top = `${y}px`;
+    }
 
-	activateCorner(i) {
-		this.activeCorner = i;
-		const desired = -this.baseCornerAngles[i];
-		const delta = shortestAngleDelta(desired, this.rotation);
-		const endRot = this.rotation + delta;
-		this.animation = { start: this.rotation, end: endRot, t0: performance.now(), dur: 750 };
-	}
+    activateCorner(i) {
+        this.activeCorner = i;
+        const desired = -this.baseCornerAngles[i];
+        const delta = shortestAngleDelta(desired, this.rotation);
+        const endRot = this.rotation + delta;
+        this.animation = { start: this.rotation, end: endRot, t0: performance.now(), dur: 750 };
+    }
 
-	getActiveCornerIndex() {
-		return this.activeCorner;
-	}
+    getActiveCornerIndex() {
+        return this.activeCorner;
+    }
 
-	setActiveCornerIndex(i) {
-		if (i < 0 || i > 2)
-			return;
+    setActiveCornerIndex(i) {
+        if (i < 0 || i > 2)
+            return;
 
-		this.activeCorner = i;
-		const desired = -this.baseCornerAngles[i];
-		const delta = shortestAngleDelta(desired, this.rotation);
-		this.rotation = mod360(this.rotation + delta);
-		this.animation = null;
-		this.draw();
-	}
+        this.activeCorner = i;
+        const desired = -this.baseCornerAngles[i];
+        const delta = shortestAngleDelta(desired, this.rotation);
+        this.rotation = mod360(this.rotation + delta);
+        this.animation = null;
+        this.draw();
+    }
 
-	update(now) {
-		if (!this.animation)
-			return false;
+    update(now) {
+        if (!this.animation)
+            return false;
 
-		const t = Math.min((now - this.animation.t0) / this.animation.dur, 1);
-		this.rotation = this.animation.start + (this.animation.end - this.animation.start) * easeOutCubic(t);
-		if (t >= 1) {
-			this.rotation = mod360(this.animation.end);
-			this.animation = null;
-		}
+        const t = Math.min((now - this.animation.t0) / this.animation.dur, 1);
+        this.rotation = this.animation.start + (this.animation.end - this.animation.start) * easeOutCubic(t);
+        if (t >= 1) {
+            this.rotation = mod360(this.animation.end);
+            this.animation = null;
+        }
 
-		return !!this.animation;
-	}
+        return !!this.animation;
+    }
 
-	draw() {
-		const ctx = this.ctx;
-		const width = this.canvas.width;
-		const height = this.canvas.height;
-		ctx.save();
-		ctx.clearRect(0, 0, width, height);
+    draw() {
+        const ctx = this.ctx;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        ctx.save();
+        ctx.clearRect(0, 0, width, height);
 
-		const centerX = width / 2;
-		const centerY = height / 2;
-		const corners = [];
-		for (let i = 0; i < 3; i++) {
-			const angle = degToRad(this.targetRotation + this.rotation + this.baseCornerAngles[i]);
-			corners.push({
-				x: centerX + Math.cos(angle) * this.radius,
-				y: centerY + Math.sin(angle) * this.radius
-			});
-		}
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const corners = [];
+        for (let i = 0; i < 3; i++) {
+            const angle = degToRad(this.targetRotation + this.rotation + this.baseCornerAngles[i]);
+            corners.push({
+                x: centerX + Math.cos(angle) * this.radius,
+                y: centerY + Math.sin(angle) * this.radius
+            });
+        }
 
-		ctx.beginPath();
-		ctx.moveTo(corners[0].x, corners[0].y);
-		ctx.lineTo(corners[1].x, corners[1].y);
-		ctx.lineTo(corners[2].x, corners[2].y);
-		ctx.closePath();
-		ctx.lineWidth = 4;
-		ctx.strokeStyle = this.color;
-		ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        ctx.lineTo(corners[1].x, corners[1].y);
+        ctx.lineTo(corners[2].x, corners[2].y);
+        ctx.closePath();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = this.color;
+        ctx.stroke();
 
-		if (this.activeCorner !== null) {
-			const corner = corners[this.activeCorner];
-			ctx.beginPath();
-			ctx.arc(corner.x, corner.y, this.size * 0.05, 0, Math.PI * 2);
-			ctx.fillStyle = this.color;
-			ctx.fill();
-		}
-		ctx.restore();
+        if (this.activeCorner !== null) {
+            const corner = corners[this.activeCorner];
+            ctx.beginPath();
+            ctx.arc(corner.x, corner.y, this.size * 0.05, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        }
+        ctx.restore();
 
-		for (let i = 0; i < 3; i++) {
-			const labelElement = this.labelElements[i];
-			labelElement.style.left = `${corners[i].x}px`;
-			labelElement.style.top = `${corners[i].y}px`;
-		}
+        for (let i = 0; i < 3; i++) {
+            const labelElement = this.labelElements[i];
+            labelElement.style.left = `${corners[i].x}px`;
+            labelElement.style.top = `${corners[i].y}px`;
+        }
 
-		this.centerLabelElement.style.left = `${centerX}px`;
-		this.centerLabelElement.style.top = `${centerY}px`;
-	}
+        this.centerLabelElement.style.left = `${centerX}px`;
+        this.centerLabelElement.style.top = `${centerY}px`;
+    }
 }
 
 function createCategoryUI(x, y, size, rotation, color, labels, centerText) {
-	const container = document.getElementById("appControls");
-	const ui = new CategoryUI(container, size, { x, y }, rotation, color, labels, centerText);
-	return ui;
+    const container = document.getElementById("appControls");
+    const ui = new CategoryUI(container, size, { x, y }, rotation, color, labels, centerText);
+    return ui;
 }
 
 /**
@@ -1065,6 +1064,22 @@ function startMainLoop() {
     }
 
     requestAnimationFrame(loop);
+}
+
+/**
+ * Load libraries
+ */
+
+function loadHtml2Canvas() {
+    return new Promise((resolve, reject) => {
+        if (window.html2canvas) return resolve(window.html2canvas);
+
+        const script = document.createElement("script");
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+        script.onload = () => resolve(window.html2canvas);
+        script.onerror = () => reject(new Error("Failed to load html2canvas"));
+        document.head.appendChild(script);
+    });
 }
 
 /**
@@ -1101,8 +1116,8 @@ function getGraphRadius(canvas) {
 }
 
 function getProfileColor(index, step = 137.508) {
-  const hue = (index * step) % 360;
-  const saturation = 80;
-  const lightness = 40;
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    const hue = (index * step) % 360;
+    const saturation = 80;
+    const lightness = 40;
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }

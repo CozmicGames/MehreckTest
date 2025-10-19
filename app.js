@@ -505,7 +505,7 @@ function draw() {
         ctx.restore();
     }
 
-    function drawData(anglesAndRadii, color, isCurrentProfile) {
+    function drawData(anglesAndRadii, color, isCurrentProfile, isHiddenCurrentProfile) {
         const points = anglesAndRadii.map(angleAndRadius => ({
             x: centerX + angleAndRadius.radius * Math.cos(angleAndRadius.angle),
             y: centerY + angleAndRadius.radius * Math.sin(angleAndRadius.angle)
@@ -546,6 +546,9 @@ function draw() {
 
         ctx.save();
 
+        if (isHiddenCurrentProfile)
+            ctx.globalAlpha = 0.6;
+
         if (settings.showLinesBetweenDataPoints)
             drawLines(isCurrentProfile, true);
 
@@ -559,7 +562,7 @@ function draw() {
         ctx.restore();
     }
 
-    function drawProfile(profile, isCurrentProfile) {
+    function drawProfile(profile, isCurrentProfile, isHiddenCurrentProfile = false) {
         const dataAnglesAndRadii = [];
         for (let i = 0; i < categoryCount; i++) {
             const dataPoint = profile.dataPoints[i];
@@ -572,7 +575,7 @@ function draw() {
             });
         }
 
-        drawData(dataAnglesAndRadii, profile.color, isCurrentProfile);
+        drawData(dataAnglesAndRadii, profile.color, isCurrentProfile, isHiddenCurrentProfile);
     }
 
     drawBackground(radius, 1000);
@@ -593,7 +596,7 @@ function draw() {
 
     let currentProfile = profiles[currentProfileID];
     if (currentProfile != null)
-        drawProfile(currentProfile, true);
+        drawProfile(currentProfile, true, currentProfile.isVisible === false);
 }
 
 /**
